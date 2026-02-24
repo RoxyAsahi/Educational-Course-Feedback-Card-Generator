@@ -1,0 +1,5 @@
+{
+  "name": "教培学生反馈卡生成器",
+  "description": "一个为教培老师设计的学生课后反馈卡生成工具，支持自定义内容并可利用 AI 辅助生成评语。",
+  "requestFramePermissions": []
+}
