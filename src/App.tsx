@@ -250,7 +250,7 @@ export default function App() {
       if (openAIClient) {
         console.log("使用 OpenAI 兼容端点生成...");
         const response = await openAIClient.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: process.env.VITE_API_MODEL || "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
         });
