@@ -58,7 +58,7 @@ export default function App() {
   const geminiClient = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
   const openAIClient = (process.env.VITE_API_KEY && process.env.VITE_API_ENDPOINT) ? new OpenAI({
     apiKey: process.env.VITE_API_KEY,
-    baseURL: process.env.VITE_API_ENDPOINT,
+    baseURL: process.env.VITE_API_ENDPOINT.endsWith('/v1') ? process.env.VITE_API_ENDPOINT : `${process.env.VITE_API_ENDPOINT}/v1`,
     dangerouslyAllowBrowser: true,
   }) : null;
 
@@ -248,13 +248,21 @@ export default function App() {
       let commentText = "";
       
       if (openAIClient) {
-        console.log("使用 OpenAI 兼容端点生成...");
+        console.log("使用 OpenAI 兼容端点生成，模型:", process.env.VITE_API_MODEL || "gpt-3.5-turbo");
         const response = await openAIClient.chat.completions.create({
             model: process.env.VITE_API_MODEL || "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
         });
-        commentText = response.choices[0]?.message?.content || "OpenAI 兼容模型返回内容为空。";
+        
+        console.log("API 原始响应:", response);
+
+        if (response && response.choices && response.choices.length > 0) {
+          commentText = response.choices[0].message?.content || "模型返回内容为空。";
+        } else {
+          console.error("API 返回结构异常:", response);
+          commentText = "错误：API 返回数据格式不正确，请检查控制台日志。";
+        }
       } else if (geminiClient) {
         console.log("使用 Google Gemini 生成...");
         const response = await geminiClient.models.generateContent({
