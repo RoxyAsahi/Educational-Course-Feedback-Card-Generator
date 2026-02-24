@@ -73,5 +73,7 @@ npm run dev
 ## ⚠️ 注意事项
 
 *   **样式依赖：** 反馈卡片的复杂布局和美观性**完全依赖**于 `src/index.css` 中定义的类。请勿随意删除或修改该 CSS 文件中的核心样式定义。
-*   **AI 功能：** AI 评论生成功能需要配置后端服务和有效的 API 密钥。客户端代码已安全处理，但在当前状态下点击 AI 按钮会返回模拟文本。
+*   **AI 功能：** AI 评论生成功能支持两种模式：
+    *   **Google Gemini (默认):** 在 `.env` 文件中设置 `GEMINI_API_KEY`。
+    *   **OpenAI 兼容端点:** 在 `.env` 文件中设置 `VITE_API_KEY` (您的 API 密钥) 和 `VITE_API_ENDPOINT` (API 的 URL)。如果检测到这两个变量，将优先使用 OpenAI 兼容模式。
 *   **数据持久化：** 模板数据通过 `localStorage` 进行持久化存储。

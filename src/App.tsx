@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { OpenAI } from 'openai';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Download, 
@@ -25,27 +26,65 @@ import { toPng } from 'html-to-image';
 import { GoogleGenAI } from "@google/genai";
 import { FeedbackData, DEFAULT_DATA, KnowledgePoint, SPRING_PRESET, AFTER_SCHOOL_PRESET } from './types';
 
-const ai = { models: { generateContent: async () => ({ text: "AI 评论生成功能因缺少客户端 API 密钥而禁用。请在后端配置 Gemini API。" }) } };
+const geminiClient = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+const openAIClient = (process.env.VITE_API_KEY && process.env.VITE_API_ENDPOINT) ? new OpenAI({
+  apiKey: process.env.VITE_API_KEY,
+  baseURL: process.env.VITE_API_ENDPOINT,
+  dangerouslyAllowBrowser: true,
+}) : null;
 
-const THEME_PRESETS = [
-  { name: '经典蓝', color: '#007BFF' },
-  { name: '活力橙', color: '#F39C12' },
-  { name: '优雅紫', color: '#6F42C1' },
-  { name: '清新绿', color: '#4ADE80' },
-  { name: '深邃黑', color: '#1A1A1A' },
-];
+// ... (省略到 generateAIComment 函数)
 
-const PERFORMANCE_PRESETS = {
-  attendance: ["准时", "迟到", "请假", "旷课"],
-  interaction: ["100%-独立和思考", "80%-积极互动", "50%-被动回答", "需加强"],
-  completion: ["100%", "90%", "80%", "70%以下"],
-  classroom: [
-    "听课时能集中注意力,在沟通环节积极参与讨论,当老师提出问题时能积极参与发言",
-    "课堂表现积极，能够紧跟老师思路，但在独立思考环节还需更专注一些",
-    "能够完成基础练习，但在高难度挑战题上表现出畏难情绪，需要多加鼓励",
-    "专注度有待提高，容易受周围环境影响，建议课后多复习巩固基础知识"
-  ]
-};
+  const generateAIComment = async () => {
+    setIsGenerating(true);
+    try {
+      const prompt = `
+        你是一位资深的教培老师。请根据以下学生表现数据，写一段专业、客观且具有鼓励性的课后反馈评语。
+        评语应包含：
+        1. 课堂表现（积极性、专注度）。
+        2. 知识点掌握情况（根据提供的知识点列表）。
+        3. 改进建议或后续计划。
+        
+        学生姓名：${data.studentName}
+        课程名称：${data.courseName}
+        知识点：${data.knowledgePoints.map(p => `${p.point}(难度:${p.difficulty})`).join(', ')}
+        统计数据：掌握知识量${data.stats.knowledgeCount}，做题量${data.stats.problemsSolved}，测试结果${data.stats.testResult}
+        课堂表现：到课${data.performance.attendance}，互动${data.performance.interaction}，练习完成${data.performance.completion}
+        
+        请直接输出评语内容，不要包含任何多余的解释。字数在300-500字左右，分段清晰。
+      `;
+
+      let commentText = "";
+      
+      if (openAIClient) {
+        console.log("使用 OpenAI 兼容端点生成...");
+        const response = await openAIClient.chat.completions.create({
+            model: "gpt-3.5-turbo", // 可根据您的模型调整
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+        });
+        commentText = response.choices[0]?.message?.content || "OpenAI 兼容模型返回内容为空。";
+      } else if (geminiClient) {
+        console.log("使用 Google Gemini 生成...");
+        const response = await geminiClient.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt,
+        });
+        commentText = response.text || "Gemini 模型返回内容为空。";
+      } else {
+        commentText = "错误：AI 功能未配置。请在 .env 文件中设置 GEMINI_API_KEY 或 VITE_API_KEY/VITE_API_ENDPOINT。";
+      }
+
+      setData(prev => ({ ...prev, comprehensiveComment: commentText }));
+
+    } catch (error) {
+      console.error("AI 生成失败:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`AI 生成失败，请检查浏览器控制台日志。\n错误: ${errorMessage}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
 interface SavedTemplate {
   id: string;
